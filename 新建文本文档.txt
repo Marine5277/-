@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"> <!-- 设置网页字符集为UTF-8 -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0"> <!-- 设置网页适配移动设备 -->
+<title>雷霆战机</title> <!-- 网页标题 -->
+<style>
+  /* 设置页面和画布的基本样式 */
+  body, html {
+    margin: 0; /* 移除默认边距 */
+    padding: 0; /* 移除默认内边距 */
+    overflow: hidden; /* 隐藏溢出的内容 */
+  }
+  #canvas {
+    background: url('background.jpg') no-repeat center center fixed; /* 设置画布背景图片 */
+    background-size: cover; /* 背景图片覆盖整个画布 */
+  }
+  .plane {
+    position: absolute; /* 绝对定位飞机 */
+    bottom: 10px; /* 距离底部10px */
+    left: 50%; /* 水平居中 */
+    transform: translateX(-50%); /* 向左偏移自身宽度的一半，实现居中 */
+    width: 50px; /* 飞机宽度 */
+    height: 50px; /* 飞机高度 */
+    background: url('plane.png') no-repeat center center; /* 飞机背景图片 */
+    background-size: contain; /* 背景图片适应飞机尺寸 */
+  }
+  .bullet {
+    position: absolute; /* 绝对定位子弹 */
+    width: 5px; /* 子弹宽度 */
+    height: 10px; /* 子弹高度 */
+    background: black; /* 子弹颜色为黑色 */
+  }
+  .enemy {
+    position: absolute; /* 绝对定位敌机 */
+    width: 30px; /* 敌机宽度 */
+    height: 30px; /* 敌机高度 */
+    background: url('enemy.png') no-repeat center center; /* 敌机背景图片 */
+    background-size: contain; /* 背景图片适应敌机尺寸 */
+  }
+  #score {
+    position: absolute; /* 绝对定位得分显示 */
+    top: 10px; /* 距离顶部10px */
+    left: 10px; /* 距离左边10px */
+    color: white; /* 字体颜色为白色 */
+    font-size: 20px; /* 字体大小为20px */
+  }
+</style>
+</head>
+<body>
+<div id="canvas"> <!-- 画布容器 -->
+  <div class="plane" id="plane"></div> <!-- 飞机元素 -->
+  <div id="score">得分: 0</div> <!-- 得分显示元素 -->
+</div>
+
+<script>
+  const canvas = document.getElementById('canvas'); // 获取画布元素
+  const plane = document.getElementById('plane'); // 获取飞机元素
+  const scoreElement = document.getElementById('score'); // 获取得分显示元素
+  let score = 0; // 初始化得分
+  let gameRunning = true; // 游戏是否运行标志
+
+  // 设置飞机初始位置
+  let planeX = canvas.clientWidth / 2; // 飞机初始X坐标
+
+  // 监听键盘事件，移动飞机
+  document.addEventListener('keydown', function(e) {
+    if (!gameRunning) return; // 如果游戏未运行，则不执行移动
+    if (e.key === 'ArrowLeft') { // 如果按下左箭头
+      planeX -= 20; // 飞机向左移动20px
+    } else if (e.key === 'ArrowRight') { // 如果按下右箭头
+      planeX += 20; // 飞机向右移动20px
+    }
+    plane.style.left = planeX + 'px'; // 更新飞机位置
+  });
+
+  // 射击子弹的函数
+  function shootBullet() {
+    if (!gameRunning) return; // 如果游戏未运行，则不执行射击
+    const bullet = document.createElement('div'); // 创建子弹元素
+    bullet.classList.add('bullet'); // 添加子弹类
+    bullet.style.left = planeX + plane.clientWidth / 2 - bullet.clientWidth / 2 + 'px'; // 设置子弹位置
+    bullet.style.top = plane.offsetTop - bullet.clientHeight + 'px'; // 设置子弹位置
+    canvas.appendChild(bullet); // 将子弹添加到画布上
+
+    // 子弹移动逻辑
+    let bulletY = bullet.offsetTop; // 获取子弹初始Y坐标
+    const bulletMove = setInterval(() => { // 设置子弹移动的定时器
+      bulletY -= 5; // 子弹向上移动5px
+      bullet.style.top = bulletY + 'px'; // 更新子弹位置
+      if (bulletY < 0) { // 如果子弹超出画布顶部
+        clearInterval(bulletMove); // 清除子弹移动的定时器
+        bullet.remove(); // 移除子弹元素
+      }
+    }, 10); // 每隔10毫秒移动一次子弹
+  }
+
+  // 生成敌机的函数
+  function spawnEnemies() {
+    if (!gameRunning) return; // 如果游戏未运行，则不生成敌机
+    const enemy = document.createElement('div'); // 创建敌机元素
+    enemy.classList.add('enemy'); // 添加敌机类
+    enemy.style.left = Math.random() * (canvas.clientWidth - enemy.clientWidth) + 'px'; // 设置敌机水平位置
+    enemy.style.top = -enemy.clientHeight + 'px'; // 设置敌机垂直位置
+    canvas.appendChild(enemy); // 将敌机添加到画布上
+
+    // 敌机移动逻辑
+    let enemyY = enemy.offsetTop; // 获取敌机初始Y坐标
+    const enemyMove = setInterval(() => { // 设置敌机移动的定时器
+      if (!gameRunning) {
+        clearInterval(enemyMove); // 如果游戏未运行，清除定时器
+        return;
+      }
+      enemyY += 2; // 敌机向下移动2px
+      enemy.style.top = enemyY + 'px'; // 更新敌机位置
+      if (enemyY > canvas.clientHeight) { // 如果敌机超出画布底部
+        clearInterval(enemyMove); // 清除敌机移动的定时器
+        enemy.remove(); // 移除敌机元素
+        if (gameRunning) { // 如果游戏仍在运行
+          gameOver(); // 结束游戏
+        }
+      }
+    }, 20); // 每隔20毫秒移动一次敌机
+  }
+
+  // 碰撞检测函数
+  function checkCollision(bullet, enemy) {
+    const bulletRect = bullet.getBoundingClientRect(); // 获取子弹的边界矩形
+    const enemyRect = enemy.getBoundingClientRect(); // 获取敌机的边界矩形
+    return (
+      bulletRect.left < enemyRect.right && // 子弹的左边小于敌机的右边
+      bulletRect.right > enemyRect.left && // 子弹的右边大于敌机的左边
+      bulletRect.top < enemyRect.bottom && // 子弹的顶部小于敌机的底部
+      bulletRect.bottom > enemyRect.top // 子弹的底部大于敌机的顶部
+    );
+  }
+
+  // 游戏循环函数
+  function gameLoop() {
+    if (!gameRunning) return; // 如果游戏未运行，则不执行循环
+    const bullets = document.querySelectorAll('.bullet'); // 获取所有子弹元素
+    const enemies = document.querySelectorAll('.enemy'); // 获取所有敌机元素
+    bullets.forEach(bullet => { // 遍历所有子弹
+      enemies.forEach(enemy => { // 遍历所有敌机
+        if (checkCollision(bullet, enemy)) { // 如果发生碰撞
+          bullet.remove(); // 移除子弹
+          enemy.remove(); // 移除敌机
+          score++; // 增加得分
+          scoreElement.textContent = '得分: ' + score; // 更新得分显示
+        }
+      });
+    });
+    requestAnimationFrame(gameLoop); // 请求下一帧动画
+  }
+
+ // 游戏结束函数
+  function gameOver() {
+    gameRunning = false; // 停止游戏
+    alert('游戏结束！您的得分是：' + score); // 弹出得分
+    // 可以选择在这里重置游戏
+    // location.reload(); // 重新加载页面以重置游戏
+  }
+
+  // 开始游戏循环和生成敌机
+  gameLoop();
+  setInterval(spawnEnemies, 1000); // 每秒生成一个敌机
+
+  // 设置定时器，每500毫秒发射一颗子弹
+  setInterval(shootBullet, 500);
+</script>
